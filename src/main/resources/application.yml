@@ -1,6 +1,24 @@
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
+#    driver-class-name: com.mysql.cj.jdbc.Driver
+    driver-class-name: net.sf.log4jdbc.DriverSpy
     username: root
     password: 123456
-    url: jdbc:mysql://127.0.0.1:3306/jpa?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+    url: jdbc:log4jdbc:mysql://localhost:3306/libw?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+#    url: jdbc:mysql://127.0.0.1:3306/libw?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+  jpa:
+    hibernate:
+      ddl-auto: update
+#    show-sql: true
+
+
+# 配置log4jdbc打印sql语句
+# https://blog.csdn.net/u013409283/article/details/79219858
+logging:
+  level:
+    jdbc:
+      sqlonly: info
+      audit: error
+      connection: error
+      resultset: error
+      sqltiming: error
