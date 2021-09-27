@@ -1,4 +1,4 @@
-package com.libw.crawler;
+package com.libw.crawler.entity.po;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -43,12 +43,12 @@ public class GVPItem
     /**
      * star数
      */
-    private BigDecimal starNum;
+    private Integer starNum;
 
     /**
      * fork数
      */
-    private BigDecimal forkNum;
+    private Integer forkNum;
 
     /**
      * url
