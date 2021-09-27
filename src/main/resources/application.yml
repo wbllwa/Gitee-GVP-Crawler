@@ -22,3 +22,7 @@ logging:
       connection: error
       resultset: error
       sqltiming: error
+
+
+libw:
+  openProxy: false

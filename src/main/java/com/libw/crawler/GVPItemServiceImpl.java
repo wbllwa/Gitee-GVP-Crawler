@@ -7,16 +7,19 @@ import cn.hutool.poi.excel.ExcelWriter;
 import com.libw.crawler.entity.po.GVPItem;
 import com.libw.crawler.entity.po.GVPItem_;
 import com.libw.crawler.entity.vo.SheetNameVO;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import javax.persistence.criteria.Predicate;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.common.usermodel.HyperlinkType;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CreationHelper;
 import org.apache.poi.ss.usermodel.Hyperlink;
 import org.apache.poi.ss.util.WorkbookUtil;
-import org.apache.poi.xssf.usermodel.XSSFCreationHelper;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -28,14 +31,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-
-import javax.persistence.criteria.Predicate;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @author libw
@@ -68,6 +63,8 @@ public class GVPItemServiceImpl implements IGVPItemService
         try
         {
             Connection conn  = Jsoup.connect(CRAWLER_WEB_SITE);
+
+            conn.timeout(60 * 1000);
 
             if (openProxy)
             {
@@ -155,26 +152,13 @@ public class GVPItemServiceImpl implements IGVPItemService
     {
         HttpServletResponse response = ServletUtils.getResponse();
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8");
-        response.setHeader("Content-Disposition","attachment;filename=GVP结果.xlsx");
+        response.setHeader("Content-Disposition","attachment;filename=GVP-Crawler.xlsx");
 
         try(ExcelWriter writer = ExcelUtil.getWriter(true);
                 ServletOutputStream outputStream = response.getOutputStream())
         {
             List<SheetNameVO> sheetNames = gvpItemRepositry.findSheetName();
 
-            //自定义标题别名
-            writer.addHeaderAlias("name", "项目名称");
-            writer.addHeaderAlias("description", "项目描述");
-            writer.addHeaderAlias("starNum", "star数");
-            writer.addHeaderAlias("forkNum", "fork数");
-            writer.addHeaderAlias("url", "url");
-
-            // 只写出设置别名的列
-            writer.setOnlyAlias(true);
-            // 标题行冻结
-            writer.setFreezePane(0);
-            // 列设置自动宽度
-            writer.autoSizeColumnAll();
             for (int i = 0; i < sheetNames.size(); i++)
             {
                 SheetNameVO sheetNameVO = sheetNames.get(i);
@@ -182,19 +166,30 @@ public class GVPItemServiceImpl implements IGVPItemService
                 writer.setSheet(i);
                 writer.renameSheet(i, WorkbookUtil.createSafeSheetName(sheetName));
 
+                List<String> headRow = new ArrayList<>();
+                headRow.add("项目名称");
+                headRow.add("url");
+                headRow.add("star数");
+                headRow.add("fork数");
+                headRow.add("项目描述");
+                writer.writeHeadRow(headRow);
+                // 标题行冻结
+                writer.setFreezePane(1);
+
+                // 写入数据
                 List<GVPItem> gvpItems = gvpItemRepositry.findAllByTagEqualsOrderByStarNumDesc(sheetNameVO.getTagName());
-
-                for (GVPItem gvpItem : gvpItems)
-                {
-                    writer.writeRow(gvpItem, true);
-
-                    // 设置超连接
-                    CreationHelper creationHelper = new XSSFCreationHelper((XSSFWorkbook) writer.getWorkbook());
-                    Hyperlink hyperlink = creationHelper.createHyperlink(HyperlinkType.URL);
-                    int currentRow = writer.getCurrentRow();
-                    Cell cell = writer.getCell(currentRow, 4);
-                    cell.setHyperlink(hyperlink);
+                for (int j = 0; j < gvpItems.size(); j++) {
+                    GVPItem gvpItem = gvpItems.get(j);
+                    writer.writeCellValue("A"+ (j + 2), gvpItem.getName());
+                    Hyperlink hyperlink = writer.createHyperlink(HyperlinkType.URL, gvpItem.getUrl());
+                    writer.writeCellValue("B"+ (j + 2), hyperlink);
+                    writer.writeCellValue("C"+ (j + 2), gvpItem.getStarNum());
+                    writer.writeCellValue("D"+ (j + 2), gvpItem.getForkNum());
+                    writer.writeCellValue("E"+ (j + 2), gvpItem.getDescription());
                 }
+
+                // 列设置自动宽度
+                writer.autoSizeColumnAll();
             }
 
             writer.flush(outputStream, true);
