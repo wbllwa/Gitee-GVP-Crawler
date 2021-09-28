@@ -11,6 +11,7 @@ import java.util.List;
 
 /**
  * 存储层
+ *
  * @See https://stackoverflow.com/questions/46083329/no-converter-found-capable-of-converting-from-type-to-type
  * @author libw
  * @since 2021/9/27 9:53
@@ -19,7 +20,6 @@ import java.util.List;
 @Repository
 public interface GVPItemRepositry extends JpaRepository<GVPItem, Long>, JpaSpecificationExecutor<GVPItem>
 {
-
     @Query(value = "SELECT IF (g.tag != '', g.tag, '其他') as tagName, count(*) as total FROM gvp_item g GROUP BY g.tag ORDER BY total DESC", nativeQuery = true)
     List<SheetNameVO> findSheetName();
 
