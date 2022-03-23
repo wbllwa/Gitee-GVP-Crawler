@@ -36,7 +36,7 @@ public class CrawlerController
         return gvpItemService.queryGVPItem(pageable, gvpItem);
     }
 
-    @GetMapping("exportExcels")
+    @GetMapping("exportExcel")
     public void exportExcel()
     {
         gvpItemService.exportExcel();

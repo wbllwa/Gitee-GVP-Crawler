@@ -150,9 +150,10 @@ public class GVPItemServiceImpl implements IGVPItemService
     @Override
     public void exportExcel()
     {
+        String fileName = StrUtil.format("GVP-Crawler-{}.xlsx", System.currentTimeMillis());
         HttpServletResponse response = ServletUtils.getResponse();
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8");
-        response.setHeader("Content-Disposition","attachment;filename=GVP-Crawler.xlsx");
+        response.setHeader("Content-Disposition","attachment;filename=" + fileName);
 
         try(ExcelWriter writer = ExcelUtil.getWriter(true);
                 ServletOutputStream outputStream = response.getOutputStream())
