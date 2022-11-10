@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * 爬虫处理逻辑
  * @author libw
  * @since 2021/9/27 15:01
  */
@@ -52,15 +53,15 @@ public class GVPItemServiceImpl implements IGVPItemService
     @Autowired
     GVPItemRepositry gvpItemRepositry;
 
-    @Value("${libw.openProxy:true}")
-    private Boolean openProxy;
-
     private static final String CRAWLER_WEB_SITE = "https://gitee.com/gvp/all";
 
     private static final String URL_PREFIX = "https://gitee.com/";
 
-    private static final String PROXY_HOST = "192.190.10.101";
-    private static final int PROXY_PORT = 3128;
+    @Value("${crawler.proxy.host}")
+    private String proxyHost;
+
+    @Value("${crawler.proxy.port}")
+    private int proxyPort;
 
     @Override
     public void crawlerData()
@@ -76,9 +77,9 @@ public class GVPItemServiceImpl implements IGVPItemService
 
             conn.timeout(60 * 1000);
 
-            if (openProxy)
+            if (StringUtils.isNotBlank(proxyHost))
             {
-                conn = conn.proxy(PROXY_HOST, PROXY_PORT);
+                conn = conn.proxy(proxyHost, proxyPort);
             }
 
             doc = conn.get();

@@ -1,0 +1,14 @@
+{
+  "properties": [
+    {
+      "name": "crawler.proxy.host",
+      "type": "java.lang.String",
+      "description": "爬虫代理host."
+    },
+    {
+      "name": "crawler.proxy.port",
+      "type": "java.lang.String",
+      "description": "爬虫代理端口."
+    }
+  ]
+}
