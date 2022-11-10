@@ -7,7 +7,7 @@ package com.libw.crawler.entity.vo;
  * @since 2021/9/27 15:30
  */
 
-public interface SheetNameVO
+public interface SheetVO
 {
     String getTagName();
     Long getTotal();

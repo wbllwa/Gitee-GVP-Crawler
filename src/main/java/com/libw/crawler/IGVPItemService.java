@@ -4,6 +4,9 @@ import com.libw.crawler.entity.po.GVPItem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.io.IOException;
+import java.io.OutputStream;
+
 /**
  * 爬虫接口
  *
@@ -33,5 +36,15 @@ public interface IGVPItemService
     /**
      * 按照tag导出至不同sheet，按照starNum倒序
      */
-    void exportExcel();
+    void exportExcel(OutputStream outputStream);
+
+    /**
+     * 导出CSV
+     */
+    void exportCSV(OutputStream outputStream) throws IOException;
+
+    /**
+     * 导出html
+     */
+    void exportHtml(OutputStream outputStream);
 }

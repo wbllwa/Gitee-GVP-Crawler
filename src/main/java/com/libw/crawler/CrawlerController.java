@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 /**
  * 爬虫控制器
  *
@@ -39,8 +43,51 @@ public class CrawlerController
     @GetMapping("exportExcel")
     public void exportExcel()
     {
-        gvpItemService.exportExcel();
+        HttpServletResponse response = ServletUtils.getResponse();
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8");
+        response.setHeader("Content-Disposition","attachment;filename=" + ExportUtil.getXlsxName());
+        try (ServletOutputStream outputStream = response.getOutputStream())
+        {
+            gvpItemService.exportExcel(outputStream);
+        }
+        catch (IOException e)
+        {
+            log.error("导出数据失败", e);
+        }
     }
+
+    @GetMapping("exportCsv")
+    public void exportCsv()
+    {
+        HttpServletResponse response = ServletUtils.getResponse();
+        response.setContentType("text/csv;charset=utf-8");
+        response.setHeader("Content-Disposition","attachment;filename=" + ExportUtil.getCsvName());
+        try (ServletOutputStream outputStream = response.getOutputStream())
+        {
+            gvpItemService.exportCSV(outputStream);
+        }
+        catch (IOException e)
+        {
+            log.error("导出数据失败", e);
+        }
+    }
+
+    @GetMapping("exportHtml")
+    public void exportHtml()
+    {
+        HttpServletResponse response = ServletUtils.getResponse();
+        response.setContentType("text/html;charset=utf-8");
+        response.setHeader("Content-Disposition","attachment;filename=" + ExportUtil.getCsvName());
+        try (ServletOutputStream outputStream = response.getOutputStream())
+        {
+            gvpItemService.exportHtml(outputStream);
+        }
+        catch (IOException e)
+        {
+            log.error("导出数据失败", e);
+        }
+    }
+
 
     @DeleteMapping("deleteAll")
     public void deleteAll()

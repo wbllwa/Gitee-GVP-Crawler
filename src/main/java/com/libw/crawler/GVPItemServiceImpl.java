@@ -1,19 +1,16 @@
 package com.libw.crawler;
 
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.poi.excel.ExcelUtil;
 import cn.hutool.poi.excel.ExcelWriter;
+import com.libw.crawler.entity.dto.ExportData;
+import com.libw.crawler.entity.dto.Sheet;
 import com.libw.crawler.entity.po.GVPItem;
 import com.libw.crawler.entity.po.GVPItem_;
-import com.libw.crawler.entity.vo.SheetNameVO;
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import javax.persistence.criteria.Predicate;
-import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletResponse;
+import com.libw.crawler.entity.vo.SheetVO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +28,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+
+import javax.persistence.criteria.Predicate;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author libw
@@ -58,6 +65,9 @@ public class GVPItemServiceImpl implements IGVPItemService
     @Override
     public void crawlerData()
     {
+        log.info("[爬虫]-[清空旧数据]");
+        this.deleteAll();
+
         log.info("[爬虫]-[开始爬取：{}]", CRAWLER_WEB_SITE);
         Document doc = null;
         try
@@ -147,40 +157,58 @@ public class GVPItemServiceImpl implements IGVPItemService
         return gvpItemRepositry.findAll(specification, pageable);
     }
 
-    @Override
-    public void exportExcel()
+    private ExportData initExportData()
     {
-        String fileName = StrUtil.format("GVP-Crawler-{}.xlsx", System.currentTimeMillis());
-        HttpServletResponse response = ServletUtils.getResponse();
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8");
-        response.setHeader("Content-Disposition","attachment;filename=" + fileName);
+        ExportData exportData = new ExportData();
+        List<Sheet> sheets = new ArrayList<>();
+        List<SheetVO> sheetVos = gvpItemRepositry.findSheetName();
 
-        try(ExcelWriter writer = ExcelUtil.getWriter(true);
-                ServletOutputStream outputStream = response.getOutputStream())
+
+        List<String> headRow = new ArrayList<>();
+        headRow.add("项目名称");
+        headRow.add("url");
+        headRow.add("star数");
+        headRow.add("fork数");
+        headRow.add("项目描述");
+
+        for (SheetVO sheetVo : sheetVos)
         {
-            List<SheetNameVO> sheetNames = gvpItemRepositry.findSheetName();
+            List<GVPItem> gvpItems = gvpItemRepositry.findAllByTagEqualsOrderByStarNumDesc(sheetVo.getTagName());
 
-            for (int i = 0; i < sheetNames.size(); i++)
+            Sheet sheet = new Sheet();
+            sheet.setTagName(sheetVo.getTagName());
+            sheet.setTotal(sheetVo.getTotal());
+            sheet.setData(gvpItems);
+            sheet.setHeader(headRow);
+            sheets.add(sheet);
+        }
+        exportData.setSheets(sheets);
+
+        return exportData;
+    }
+
+    @Override
+    public void exportExcel(OutputStream outputStream)
+    {
+        try(ExcelWriter writer = ExcelUtil.getWriter(true))
+        {
+            ExportData exportData = this.initExportData();
+            List<Sheet> sheets = exportData.getSheets();
+
+            for (int i = 0; i < sheets.size(); i++)
             {
-                SheetNameVO sheetNameVO = sheetNames.get(i);
-                String sheetName = StrUtil.format("{} ({})", sheetNameVO.getTagName(), sheetNameVO.getTotal());
+                Sheet sheet = sheets.get(i);
+                String sheetName = StrUtil.format("{} ({})", sheet.getTagName(), sheet.getTotal());
                 writer.setSheet(i);
                 writer.renameSheet(i, WorkbookUtil.createSafeSheetName(sheetName));
-
-                List<String> headRow = new ArrayList<>();
-                headRow.add("项目名称");
-                headRow.add("url");
-                headRow.add("star数");
-                headRow.add("fork数");
-                headRow.add("项目描述");
-                writer.writeHeadRow(headRow);
+                writer.writeHeadRow(sheet.getHeader());
                 // 标题行冻结
                 writer.setFreezePane(1);
 
                 // 写入数据
-                List<GVPItem> gvpItems = gvpItemRepositry.findAllByTagEqualsOrderByStarNumDesc(sheetNameVO.getTagName());
-                for (int j = 0; j < gvpItems.size(); j++) {
-                    GVPItem gvpItem = gvpItems.get(j);
+                List<GVPItem> data = sheet.getData();
+                for (int j = 0; j < data.size(); j++) {
+                    GVPItem gvpItem = data.get(j);
                     writer.writeCellValue("A"+ (j + 2), gvpItem.getName());
                     Hyperlink hyperlink = writer.createHyperlink(HyperlinkType.URL, gvpItem.getUrl());
                     writer.writeCellValue("B"+ (j + 2), hyperlink);
@@ -195,10 +223,31 @@ public class GVPItemServiceImpl implements IGVPItemService
 
             writer.flush(outputStream, true);
         }
-        catch (IOException e)
+    }
+
+    @Override
+    public void exportCSV(OutputStream outputStream) throws
+            IOException
+    {
+        outputStream.write(new byte[]{(byte)0xEF, (byte)0xBB, (byte)0xBF});
+        ExportData exportData = this.initExportData();
+        try (Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
+                CsvWriter csvWriter = CsvUtil.getWriter(writer))
         {
-            log.error("导出数据失败", e);
+            List<Sheet> sheets = exportData.getSheets();
+            for (Sheet sheet : sheets)
+            {
+                csvWriter.writeHeaderLine(sheet.getHeader().toArray(new String[0]));
+                csvWriter.writeBeans(sheet.getData());
+            }
+            csvWriter.flush();
         }
+    }
+
+    @Override
+    public void exportHtml(OutputStream outputStream)
+    {
+
     }
 
     /**
